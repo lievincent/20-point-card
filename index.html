@@ -120,6 +120,13 @@ h2{font-size:1rem;margin:0 0 10px}
 <button class="go" id="pdf">Simpan PDF untuk dibagikan</button>
 <div id="xmsg" role="status"></div>
 </section>
+<section class="card"><h2>Backup dan pindah HP</h2>
+<div class="sub" style="margin-bottom:10px">Export semua data ke satu file, lalu import di HP atau browser baru.</div>
+<button class="go" id="bexp">Export semua data</button>
+<button class="go" id="bimp" style="margin-top:8px;background:var(--card);color:var(--ink);border:1px solid var(--line)">Import data</button>
+<input type="file" id="bfile" accept=".json,application/json" hidden>
+<div id="bmsg" role="status" style="margin-top:8px;font-size:.85rem;color:var(--mut);min-height:1.2em"></div>
+</section>
 <div class="foot">Data tersimpan di browser HP ini. <button id="reset">Hapus semua data</button>
 <div class="warn" id="warn" role="alertdialog" aria-label="Konfirmasi hapus"><b>Hapus semua data?</b><br>Semua poin, log, dan catatan akan hilang dan tidak bisa dikembalikan.<div class="bt"><button id="no">Batal</button><button id="yes">Ya, hapus</button></div></div></div>
 </main>
@@ -657,6 +664,25 @@ $("pdf").onclick=async function(){
   xm("PDF tersimpan di folder Download HP.");
  }catch(e){xm(e&&e.code==="declined"?"Penyimpanan dibatalkan.":"Gagal menyimpan PDF. Coba lagi.")}
  finally{btn.disabled=false}
+};
+function bm(t){$("bmsg").textContent=t}
+$("bexp").onclick=async function(){
+ var blob=new Blob([JSON.stringify({app:"20pc",v:1,exported:new Date().toISOString(),log:log})],{type:"application/json"}),name="20pc-backup-"+ds(new Date())+".json";
+ var file=new File([blob],name,{type:"application/json"});
+ if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name});bm("Siap disimpan atau dibagikan.");return}catch(e){if(e&&e.name==="AbortError"){bm("Dibatalkan.");return}}}
+ var u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
+ bm("File backup tersimpan di folder Download.");
+};
+$("bimp").onclick=function(){$("bfile").click()};
+$("bfile").onchange=function(){
+ var f=this.files[0],inp=this;if(!f)return;var r=new FileReader();
+ r.onload=function(){try{
+  var d=JSON.parse(r.result);if(!d||d.app!=="20pc"||!Array.isArray(d.log))throw 0;
+  var ids={},add=0;log.forEach(function(x){ids[x.id]=1});
+  d.log.forEach(function(x){if(x&&x.id&&x.d&&x.a&&CN[x.t]&&!ids[x.id]){log.push({id:String(x.id),d:String(x.d),a:String(x.a),t:x.t,p:+x.p||0,n:String(x.n||"")});ids[x.id]=1;add++}});
+  save();render();bm("Berhasil: "+add+" entri ditambahkan, "+(d.log.length-add)+" dilewati (sudah ada).");
+ }catch(e){bm("File tidak valid. Pakai file backup dari aplikasi ini.")}inp.value=""};
+ r.readAsText(f);
 };
 render();
 </script>
